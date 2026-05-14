@@ -2,6 +2,22 @@
 
 本文件详细记录了本次开发周期内的所有功能更新、性能改进以及关键问题的修复过程。
 
+## Claude Code 技能体系搭建 (2026-05-14)
+
+### 1. 新增 6 个 Claude Code 技能
+
+- **内容**: 在 `.claude/skills/` 目录下创建 6 个技能文件，完整映射 `.agent/workflows/` 的开发工作流。
+- **技能清单**:
+  - `/mcp-rules` — 加载开发规范与编码约定
+  - `/mcp-define` — 创建功能 Spec（≥ 5 次深度调研 + 6 项交付标准）
+  - `/mcp-architect` — 创建实施 Plan（文件清单 + 分步复选框 + 代码片段）
+  - `/mcp-execute` — 逐步执行计划（强制 `npm run build` + 状态同步）
+  - `/mcp-refactor` — 代码审计与清理（先列清单后改代码）
+  - `/mcp-verify` — 功能验证（视觉审计 + 边界测试 + 回归检查，集成 MCP bridge 截图/日志/性能工具）
+- **意义**: 使 Claude Code 具备与 Cursor/Roo Code 等同的结构化开发流程能力。
+
+---
+
 ## `search_project` 搜索路径兜底修复 (2026-05-14)
 
 ### 1. `db://` 根路径自动纠正为 `db://assets`

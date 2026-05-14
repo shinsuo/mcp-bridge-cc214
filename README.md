@@ -35,6 +35,22 @@
 - **引用查找**: 查找场景中所有引用了指定节点或资源的位置，支持 Texture2D → SpriteFrame 子资源自动解析
 - **项目构建**: 一键触发 Cocos 原生 `Editor.Builder` 构建产物（内置智能防闪退兜底机制）
 - **工程信息**: 用于拉取当前活跃的编辑器级状态（版本号、根目录、当前打开的场景 UUID）
+- **Claude Code 技能**: 内置 6 个 Claude Code 技能（`/mcp-define` → `/mcp-architect` → `/mcp-execute` → `/mcp-verify`），覆盖从需求分析到验证的完整开发工作流
+
+### Claude Code 技能
+
+项目 `.claude/skills/` 目录下提供以下技能，可在 Claude Code 中直接调用：
+
+| 技能 | 用途 |
+|------|------|
+| `/mcp-rules` | 加载 MCP Bridge 开发规范（语言、架构、命名、提交） |
+| `/mcp-define` | 创建功能 Spec（深度代码调研 + 6 项交付标准） |
+| `/mcp-architect` | 创建实施 Plan（文件清单 + 分步复选框 + 代码片段） |
+| `/mcp-execute` | 逐步执行计划（强制编译验证 + 状态同步） |
+| `/mcp-refactor` | 代码审计与清理（先列问题清单，用户确认后修改） |
+| `/mcp-verify` | 功能验证（视觉审计 + 边界测试 + 回归检查） |
+
+完整工作流：`/mcp-define` → `/mcp-architect` → `/mcp-execute` → `/mcp-verify`
 
 ## 安装与使用
 
