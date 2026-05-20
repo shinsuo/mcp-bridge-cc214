@@ -2,6 +2,51 @@
 
 本文件详细记录了本次开发周期内的所有功能更新、性能改进以及关键问题的修复过程。
 
+## refresh_editor 编辑器卡死修复 (2026-05-20)
+
+### 问题背景
+
+AI 调用 `refresh_editor` 时传入目录级路径（如 `db://assets/_script`），`Editor.assetdb.refresh()` 耗时 60-95 秒并导致编辑器彻底卡死，只能强制关闭。
+
+### 根因分析（结合编辑器源码 `D:\Cocos\Editor\cocos-creator\resources\app\asset-db\`）
+
+通过解包 Cocos Creator 编辑器源码，完整追踪了 `Editor.assetdb.refresh()` 的内部执行链路：
+
+1. **`interface.js:refresh()`** → 将请求推入 `_tasks` 队列（并发度=1）
+2. **`tasks.js:F()`** 分四个阶段执行：
+   - `b()`: `fastGlob.sync("**/*")` 同步扫描目录所有文件（阻塞主线程）
+   - `$()`: 逐个检查文件是否需要重新导入
+   - `S()`: 对每个脚本文件调用导入器 → **触发 TypeScript 编译**
+   - `w()`: 后处理
+3. 编译在 worker 进程中异步执行，产物写入 `library/imports/`
+4. **chokidar** 文件监听器（`watch.js`）检测到写入事件
+5. 事件进入 `ChangeCollector`（200ms debounce）→ `syncChanges()`
+6. `_processChanges` 推入 `_tasks` 队列 → 第 91 行调用 **`tasks.refresh(assetdb, updates)`**
+7. 回到步骤 2，形成 **refresh → compile → write → watcher → refresh** 闭环级联
+
+**每次循环都在主线程执行 `fastGlob.sync` 和 `fs.statSync`，持续数分钟不释放。**
+
+### 与手动改脚本切回编辑器的对比
+
+手动修改脚本后切回编辑器，走的是 `submitChanges()` 中的 **fsnap 快照对比**（非 chokidar），只检测到用户修改的 1 个文件。级联链条长度仅 2-3 节（文件刷新 → 编译 → library 文件同步），总耗时约 1 秒，无感。
+
+插件刷新 200 个文件的目录时，级联链条可达 10-20 节，每节都阻塞主线程，最终导致编辑器死亡。
+
+### 修复内容
+
+| 文件 | 修改 |
+|------|------|
+| `src/core/CommandQueue.ts` | `enqueue` 新增 `onTimeout` 可选回调参数，超时时执行清理逻辑并正确关闭 HTTP 连接 |
+| `src/core/McpRouter.ts` | 传入超时清理函数，发送 504 错误响应；新增 `responseSent` 标志防止超时后重复写入响应 |
+| `src/tools/ToolDispatcher.ts` | `refresh_editor` 新增 `pathModule.extname()` 检查，**目录级路径（无后缀名）直接拒绝并返回明确错误提示**，仅允许单文件刷新 |
+| `src/tools/ToolRegistry.ts` | 更新 `manage_editor` 工具描述，从"建议指定路径"改为"硬性限制：目录路径已被代码层拒绝" |
+
+### 设计权衡
+
+不采用 `setTimeout` 异步化方案的原因：异步化破坏了 `CommandQueue` 的串行保证（`callback` 在刷新执行前就释放了队列锁），后续命令可能与刷新并发执行，引入竞态条件。在级联链条的**起点**阻止目录级刷新是唯一安全的方案。
+
+---
+
 ## Claude Code 技能体系搭建 (2026-05-14)
 
 ### 1. 新增 6 个 Claude Code 技能

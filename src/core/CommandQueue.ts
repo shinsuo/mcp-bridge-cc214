@@ -10,7 +10,7 @@ export class CommandQueue {
 	 * @param {Function} fn 接受 done 回调的函数，fn(done) 中操作完成后必须调用 done()
 	 * @returns {Promise} 操作完成后 resolve
 	 */
-	public static enqueue(fn: (done: () => void) => void): Promise<void> {
+	public static enqueue(fn: (done: () => void) => void, onTimeout?: () => void): Promise<void> {
 		if (CommandQueue.commandQueue.length >= CommandQueue.MAX_QUEUE_LENGTH) {
 			Logger.warn(`[CommandQueue] 指令队列已满（${CommandQueue.MAX_QUEUE_LENGTH}），拒绝新请求`);
 			return Promise.reject("队列已满，请稍后重试");
@@ -19,6 +19,7 @@ export class CommandQueue {
 			const timeoutId = setTimeout(() => {
 				Logger.error("[CommandQueue] 指令执行超时(60s)，强制释放队列");
 				CommandQueue.isProcessingCommand = false;
+				if (onTimeout) onTimeout();
 				resolve();
 				CommandQueue.processNext();
 			}, 60000);

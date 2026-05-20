@@ -1016,16 +1016,20 @@ export default class NewScript extends cc.Component {
 				break;
 			case "refresh_editor":
 				// 刷新编辑器资源数据库
-				// 支持指定路径以避免大型项目全量刷新耗时过长
-				// 示例: properties.path = 'db://assets/scripts/MyScript.ts' (刷新单个文件)
-				//        properties.path = 'db://assets/resources' (刷新某个目录)
-				//        不传 (默认 'db://assets'，全量刷新)
 				const refreshPath = properties && properties.path ? properties.path : "db://assets";
-				// addLog("info", `[refresh_editor] 开始刷新: ${refreshPath}`);
+				// 安全检查：检测是否为目录级刷新（无文件后缀的路径），目录级刷新会阻塞
+				// 编辑器主线程数分钟，且对脚本目录会触发 compile→refresh→compile 级联循环，
+				// 导致编辑器彻底卡死。只允许刷新单个文件（有后缀名）。
+				const hasExtension = pathModule.extname(refreshPath) !== "";
+				if (!hasExtension) {
+					const hint = refreshPath === "db://assets"
+						? "全局刷新 db://assets 会阻塞编辑器数分钟。请仅刷新具体修改的文件路径（如 db://assets/scripts/MyScript.ts）。"
+						: `目录级刷新 "${refreshPath}" 会阻塞编辑器主线程，且可能触发编译级联卡死。请仅刷新该目录下具体修改的单个文件。`;
+					return callback(hint);
+				}
 				Editor.assetdb.refresh(refreshPath, (err) => {
 					if (err) {
-						// addLog("error", `刷新失败: ${err}`);
-						callback(err);
+						callback(`刷新失败: ${err}`);
 					} else {
 						callback(null, `编辑器已刷新: ${refreshPath}`);
 					}

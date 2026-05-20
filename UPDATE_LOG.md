@@ -1,5 +1,14 @@
 # 更新日志 (UPDATE_LOG)
 
+## [1.2.1] - 2026-05-20
+### Fixed
+- **刷新编辑器死锁修复**: 彻底解决 `refresh_editor` 对目录级路径执行 `Editor.assetdb.refresh()` 导致编辑器卡死的问题。
+  > **根因分析**：`Editor.assetdb.refresh()` 在可可斯内部通过 `fastGlob.sync` 同步扫描目录，对脚本目录会触发 TypeScript 编译，编译产物写入 `library/` 后被 chokidar 文件监听器检测到，触发内部 `_processChanges` → `syncChanges` → 再次调用 `tasks.refresh()`，形成 **刷新 → 编译 → 写入 → 检测 → 刷新** 的级联循环。每次循环都阻塞主线程，持续数分钟直至编辑器彻底卡死。
+  > **修复方案**：`refresh_editor` 增加文件后缀名检测（`pathModule.extname`），目录级路径（无后缀）直接拒绝并返回明确错误提示，仅允许单文件刷新。同时完善 `CommandQueue` 超时清理机制（`onTimeout` 回调）和 HTTP 响应保护（`responseSent` 标志），防止连接悬挂。
+
+### Changed
+- **工具描述更新**: `manage_editor` 的 `refresh_editor` 描述从"建议指定路径"改为"硬性限制：仅接受单文件路径，目录路径已被代码层拒绝"。
+
 ## [1.1.0] - 2026-04-05
 ### Feature
 - **截图工具**: 新增 `capture_editor_screenshot` 工具，可以通过向编辑器发送缩放 IPC `scene:init-scene-view` 后截图，为 AI 提供全局场景搭建反馈机制。

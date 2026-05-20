@@ -245,6 +245,7 @@ mcp-bridge/
 
 - **描述**: 管理编辑器（获取/设置选中, 刷新编辑器）
 - **参数**: `action`(get_selection/set_selection/refresh_editor), `target`, `properties`
+- **注意**: `refresh_editor` 仅接受单文件路径（带后缀名），目录路径和 `db://assets` 全局路径已被代码层硬性拒绝
 
 ### 14. find_gameobjects
 

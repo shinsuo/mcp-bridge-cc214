@@ -292,7 +292,7 @@ export const getToolsList = () => {
 					properties: {
 						type: "object",
 						description:
-							"操作属性。⚠️极为重要：refresh_editor 必须通过 properties.path 指定精确的刷新路径（如 'db://assets/scripts/MyScript.ts'）。严禁不带 path 参数进行全局刷新 (db://assets)，这在大型项目中会导致编辑器卡死数分钟，严重阻塞工作流。",
+							"操作属性。⚠️硬性限制：refresh_editor 仅接受单文件路径（带后缀名如 'db://assets/scripts/MyScript.ts'）。目录路径和 db://assets 全局路径已被代码层拒绝，传入将直接报错。这是因为目录级刷新会阻塞编辑器主线程数分钟并触发编译级联卡死。修改多个文件后请逐个刷新。",
 					},
 				},
 				required: ["action"],

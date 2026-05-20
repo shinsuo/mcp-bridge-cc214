@@ -84,8 +84,11 @@ export class McpRouter {
 				}
 				Logger.mcp(`REQ -> [${name}] (队列长度: ${CommandQueue.getLength()}) 参数: ${argsPreview}`);
 
+				let responseSent = false;
 				CommandQueue.enqueue((done) => {
 					ToolDispatcher.handleMcpCall(name, args, (err: any, result: any) => {
+						if (responseSent) return; // 超时已发送错误响应，跳过
+						responseSent = true;
 						const response = {
 							content: [
 								{
@@ -117,9 +120,21 @@ export class McpRouter {
 						res.end(JSON.stringify(response));
 						done();
 					});
+				}, () => {
+					// 超时清理：关闭 HTTP 连接，防止连接悬挂
+					if (!responseSent) {
+						responseSent = true;
+						try {
+							res.writeHead(504);
+							res.end(JSON.stringify({ error: `操作超时: ${name} (60s)` }));
+						} catch (_e) {}
+					}
 				}).catch((rejectReason: any) => {
-					res.writeHead(429);
-					res.end(JSON.stringify({ error: String(rejectReason) }));
+					if (!responseSent) {
+						responseSent = true;
+						res.writeHead(429);
+						res.end(JSON.stringify({ error: String(rejectReason) }));
+					}
 				});
 			} catch (e: any) {
 				if (e instanceof SyntaxError) {
